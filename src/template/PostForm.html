@@ -1,0 +1,40 @@
+<div>
+  <form id="title-form">
+    <fieldset>
+      <textarea id="title-text" type="text" placeholder="Title..." class="input-xxlarge" maxlength="300" rows="1"></textarea>
+    </fieldset>
+    <fieldset>
+      <textarea id="summary-text" type="text" placeholder="Summary..." class="input-xxlarge" maxlength="300" rows="2"></textarea>
+    </fieldset>
+    <label id="title-left" class="muted">200</label>
+    <div id="postgrid" class="gridster">
+      <label>Drag and drop to move pictures around. Drag the right and bottom edges to resize.</label>
+      <ul>
+      </ul>
+    </div>
+  </form>
+  <form id="upload-form">
+    <fieldset>
+      <input id="upload-file" type="file" name="content" size="40">
+      <img style="width: 60px; height: 60px;" id="upload-preview">
+      <button id="upload-photo" class="btn" data-loading-text="Uploading...">Upload Photo</button>
+    </fieldset>
+  </form>
+  <form id="message-form" class="form-inline">
+    <textarea id="body-text" type="text" placeholder="Status..." maxlength="6500" rows="1"></textarea>
+    <select id="status-color" class="input-small">
+      <option>Blue</option>
+      <option>White</option>
+      <option>Grey</option>
+      <option>Red</option>
+      <option>Yellow</option>
+      <option>Green</option>
+      <option>Purple</option>
+      <option>Cyan</option>
+    </select>
+    <button id="status-submit" type="submit" class="btn">Status</button>
+    <label id="chars-left" class="muted">25</label>
+  </form>
+  <button id="update-button" class="btn">Update</button>
+  <button id="broadcast-update-button" class="btn">Broadcast</button>
+</div>
