@@ -12,10 +12,10 @@ function ($, BlogView) {
   function initialize()
   {
     $('#main-content').html('');
-    var channelId = parseHash(window.location.hash);
-    if (channelId)
+    var ids = parseHash(window.location.hash);
+    if (ids.length > 0)
     {
-      view = new BlogView($('#main-content'), channelId, true);
+      view = new BlogView($('#main-content'), ids[0], ids[1], true);
     }
     else
     {
@@ -25,12 +25,21 @@ function ($, BlogView) {
 
   function parseHash(hash)
   {
-    var result = null;
-    var regex = /^#([0-9]+)/;
+    var result = [];
+    var regex = /^#([0-9]+)\/([0-9]+)/;
     var match = regex.exec(hash);
     if (match)
     {
-      result = match[1];
+      result = [match[1], match[2]];
+    }
+    else
+    {
+      regex = /^#([0-9]+)/;
+      match = regex.exec(hash);
+      if (match)
+      {
+        result = [match[1]];
+      }
     }
     return result;
   }

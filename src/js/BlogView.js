@@ -3,40 +3,29 @@
 // Main window for viewing a single blog stream
 
 /*global define: true */
-define(['jquery', 'marked', 'util', 'appnet', 'js/PostForm', 'js/renderPhotos',
-        'text!template/BlogView.html',
-        'text!template/BlogStatus.html',
-        'text!template/BlogUpdate.html',
-        'text!template/BlogPost.html',
-        'text!template/BlogPhotoset.html'],
-function ($, marked, util, appnet, PostForm, renderPhotos, viewString,
-          statusString, updateString, postString, photosetString) {
+define(['jquery', 'util', 'appnet', 'js/PostForm', 'js/BlogPage',
+        'js/BlogInfo',
+        'text!template/BlogView.html'],
+function ($, util, appnet, PostForm, BlogPage, BlogInfo, viewString) {
   'use strict';
 
-  function BlogView(root, channelId, isEmbedded)
+  function BlogView(root, channelId, messageId, isEmbedded)
   {
-    marked.setOptions({ sanitize: true });
     this.root = root;
     this.root.html($(viewString).contents());
-    if (! isEmbedded)
-    {
-      this.root.find('#blog-body').html('<h1>Loading Channel</h1>');
-    }
-    else
-    {
-      this.root.find('#blog-header').remove();
-      this.root.find('#blog-body')
-        .removeClass('span4')
-        .removeClass('offset4');
-      this.root.find('#post-hr').remove();
-    }
     this.channelId = channelId;
     this.isEmbedded = isEmbedded;
+    this.minId = null;
+    this.maxId = null;
+    if (messageId)
+    {
+      this.maxId = (parseInt(messageId, 10) + 1) + '';
+    }
     this.timer = null;
-    this.statusTemplate = $(statusString);
-    this.updateTemplate = $(updateString);
-    this.postTemplate = $(postString);
-    this.photosetTemplate = $(photosetString);
+    if (! this.isEmbedded)
+    {
+      this.root.find('#blog-page').html('<h1>Loading Channel</h1>');
+    }
     appnet.api.getChannel(this.channelId, { include_annotations: 1 },
                           $.proxy(this.processChannel, this),
                           $.proxy(this.failInit, this));
@@ -53,190 +42,14 @@ function ($, marked, util, appnet, PostForm, renderPhotos, viewString,
     this.suffix = ' \n\n' + appnet.note.findBlogName(this.channel) + ' <=>';
     if (! this.isEmbedded)
     {
-      this.addHeader();
+      this.initForm();
     }
+    this.initPage();
     this.refresh();
   };
 
-  BlogView.prototype.refresh = function ()
+  BlogView.prototype.initForm = function ()
   {
-    clearTimeout(this.timer);
-//    this.timer = setTimeout($.proxy(this.refresh, this), 60 * 1000);
-    var options = {
-      include_annotations: 1,
-      include_deleted: 0,
-      include_machine: 1,
-      count: 200
-    };
-    appnet.api.getMessages(this.channelId, options,
-                           $.proxy(this.processMessages, this),
-                           $.proxy(this.failInit, this));
-  };
-
-  BlogView.prototype.processMessages = function (response)
-  {
-    var wrapper = $('<div/>');
-    var i = 0;
-    for (i = 0; i < response.data.length; i += 1)
-    {
-      wrapper.append(this.renderMessage(response.data[i]));
-    }
-    this.root.find('#blog-body').html(wrapper.contents());
-  };
-
-  BlogView.prototype.failInit = function (meta)
-  {
-    this.root.html('<h1>Failed</h1>');
-  };
-
-  BlogView.prototype.renderMessage = function (message)
-  {
-    var result = $('<div/>');
-    var status = appnet.note.findBlogStatus(message);
-    var blog = appnet.note.findBlogPost(message);
-    var photoset = appnet.note.findBlogPhotoset(message);
-    if (status)
-    {
-      result = this.renderStatus(status);
-    }
-    else if (blog)
-    {
-      result = this.renderBlog(message, blog);
-    }
-    else if (photoset)
-    {
-      result = this.renderPhotoset(photoset);
-    }
-    else
-    {
-      result = this.renderUpdate(message);
-    }
-    var deleteButton = result.find('#delete-button');
-    if (! this.isEmbedded && this.isOwner())
-    {
-      deleteButton.attr('data-id', message.id);
-      deleteButton.click($.proxy(this.clickDelete, this));
-    }
-    else
-    {
-      deleteButton.remove();
-    }
-    return result;
-  };
-
-  BlogView.prototype.renderStatus = function (status)
-  {
-    var result = this.statusTemplate.clone();
-    if (status.text)
-    {
-      var text = result.find('#status-text');
-      text.html(util.htmlEncode(status.text));
-    }
-    var regex = /^#[0-9a-fA-F]+$/;
-    result.css('width', '100%');
-    result.css('text-align', 'center');
-    if (status.color && regex.test(status.color))
-    {
-      result.css('background-color', status.color);
-    }
-    return result;
-  };
-
-  BlogView.prototype.renderUpdate = function (message)
-  {
-    var result = this.updateTemplate.clone();
-    result.find('#post-wrapper').html(message.html);
-    result.find('#time-wrapper').html(new Date(message.created_at).toDateString());
-    return result;
-  };
-
-  BlogView.prototype.renderBlog = function (message, blog)
-  {
-    var result = this.postTemplate.clone();
-    var title = 'Untitled';
-    if (blog.title)
-    {
-      title = util.htmlEncode(blog.title);
-    }
-    var body = '';
-    if (blog.body)
-    {
-      if (blog.format && blog.format === 'markdown')
-      {
-        body = marked(blog.body);
-      }
-      else
-      {
-        body = util.htmlEncode(blog.body);
-      }
-    }
-    result.find('#time-wrapper').html(new Date(message.created_at).toDateString());
-    result.find('#title-wrapper').html(title);
-    if (blog.summary)
-    {
-      result.find('#summary-wrapper').html(util.htmlEncode(blog.summary));
-    }
-    else
-    {
-      result.find('#summary-wrapper').remove();
-    }
-    result.find('#body-wrapper').html(body);
-    return result;
-  };
-
-  BlogView.prototype.renderPhotoset = function (photoset)
-  {
-    var title = 'Untitled';
-    if (photoset.title)
-    {
-      title = util.htmlEncode(photoset.title);
-    }
-    var caption = '';
-    if (photoset.caption)
-    {
-      caption = util.htmlEncode(photoset.caption);
-    }
-    var minX = 100;
-    var maxX = 0;
-    var i = 0;
-    if (photoset.photos)
-    {
-      for (i = 0; i < photoset.photos.length; i += 1)
-      {
-        if (photoset.photos[i].x < minX)
-        {
-          minX = photoset.photos[i].x;
-        }
-        if (photoset.photos[i].x + photoset.photos[i].width > maxX)
-        {
-          maxX = photoset.photos[i].x + photoset.photos[i].width;
-        }
-      }
-    }
-    var width = maxX - minX;
-    var result = this.photosetTemplate.clone();
-    result.find('#title-wrapper').html(title);
-    result.find('#caption-wrapper').html(caption);
-    if (width > 0)
-    {
-      var base = (this.root.find('#blog-body').width() - (width - 1) * 10) /  width;
-      result.find('.photogrid').append(renderPhotos(minX, base, photoset.photos));
-    }
-    return result;
-  };
-
-  BlogView.prototype.addHeader = function ()
-  {
-    var wrapper = $('<div/>');
-    var title = util.htmlEncode(appnet.note.findBlogName(this.channel));
-    var owner = '<small>@' + this.channel.owner.username + '</small>';
-    this.root.find('#blog-title').html(title + ' ' + owner);
-    this.root.find('#embed-link').attr('href',
-                                       'http://blog-app.net/embed.html#' +
-                                       this.channelId);
-    this.root.find('#rss-link').attr('href',
-                                     'http://jonathonduerig.com/my-rss-stream/rss.php?channel=' +
-                                     this.channelId);
     if (this.isOwner())
     {
       this.form = new PostForm({
@@ -259,9 +72,98 @@ function ($, marked, util, appnet, PostForm, renderPhotos, viewString,
     }
   };
 
+  BlogView.prototype.initPage = function ()
+  {
+    this.page = new BlogPage(this.root.find('#blog-page'),
+                             new BlogInfo(this.channel),
+                             this.isEmbedded, this.isOwner(),
+                             $.proxy(this.older, this),
+                             $.proxy(this.newer, this),
+                             $.proxy(this.permalink, this));
+  };
+
+  BlogView.prototype.older = function ()
+  {
+    this.maxId = this.minId;
+    this.minId = null;
+    this.refresh();
+  };
+
+  BlogView.prototype.newer = function ()
+  {
+    this.minId = this.maxId;
+    this.maxId = null;
+    this.refresh();
+  };
+
+  BlogView.prototype.permalink = function (id)
+  {
+    this.maxId = (parseInt(id, 10) + 1) + '';
+    this.minId = null;
+    this.refresh();
+  };
+
+  BlogView.prototype.refresh = function ()
+  {
+    clearTimeout(this.timer);
+    $(window).scrollTop(0);
+//    this.timer = setTimeout($.proxy(this.refresh, this), 60 * 1000);
+    var options = {
+      include_annotations: 1,
+      include_deleted: 0,
+      include_machine: 1,
+      count: 10
+    };
+    if (this.maxId)
+    {
+      options.count = 10;
+      options.before_id = this.maxId;
+    }
+    else if (this.minId)
+    {
+      options.count = -10;
+      options.since_id = this.minId;
+    }
+    appnet.api.getMessages(this.channelId, options,
+                           $.proxy(this.processMessages, this),
+                           $.proxy(this.failInit, this));
+  };
+
+  BlogView.prototype.processMessages = function (response)
+  {
+    if (! this.minId && ! this.maxId)
+    {
+      // Initial lookup
+      this.page.hasNewer = false;
+      this.page.hasOlder = response.meta.more;
+    }
+    else if (! this.minId)
+    {
+      // Looking Forward
+      this.page.hasNewer = true;
+      this.page.hasOlder = response.meta.more;
+    }
+    else if (! this.maxId)
+    {
+      // Looking Backward
+      this.page.hasNewer = response.meta.more;
+      this.page.hasOlder = true;
+    }
+    this.minId = response.meta.min_id;
+    this.maxId = response.meta.max_id;
+    this.page.messages = response.data;
+    this.page.render();
+  };
+
+  BlogView.prototype.failInit = function (meta)
+  {
+    this.root.html('<h1>Failed</h1>');
+  };
+
   BlogView.prototype.isOwner = function ()
   {
-    return appnet.user && appnet.user.id === this.channel.owner.id;
+    return appnet.user && this.channel &&
+      appnet.user.id === this.channel.owner.id;
   };
 
   BlogView.prototype.postStatus = function (text, color)
@@ -396,6 +298,7 @@ function ($, marked, util, appnet, PostForm, renderPhotos, viewString,
       entities: { links: links }
     };
     appnet.api.createPost(post, {}, $.proxy(this.refresh, this), null);
+    appnet.api.createMessage('8093', post, {}, null, null);
   };
 
   BlogView.prototype.clickDelete = function (event)
