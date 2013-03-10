@@ -178,6 +178,8 @@ function ($, util, appnet, PostForm, BlogPage, BlogInfo, viewString) {
         }
       }]
     };
+    this.minId = null;
+    this.maxId = null;
     appnet.api.createMessage(this.channelId, message, {},
                              $.proxy(this.refresh, this), null);
   };
@@ -187,12 +189,16 @@ function ($, util, appnet, PostForm, BlogPage, BlogInfo, viewString) {
     var message = {
       text: text
     };
+    this.minId = null;
+    this.maxId = null;
     appnet.api.createMessage(this.channelId, message, {},
                              $.proxy(this.refresh, this), null);
   };
 
   BlogView.prototype.postBlog = function (title, summary, text)
   {
+    this.minId = null;
+    this.maxId = null;
     this.sendBlog(title, summary, text, $.proxy(this.refresh, this));
   };
 
@@ -231,6 +237,8 @@ function ($, util, appnet, PostForm, BlogPage, BlogInfo, viewString) {
 
   BlogView.prototype.postPhoto = function (title, caption, photos)
   {
+    this.minId = null;
+    this.maxId = null;
     this.sendPhoto(title, caption, photos, $.proxy(this.refresh, this));
   };
 
@@ -297,6 +305,8 @@ function ($, util, appnet, PostForm, BlogPage, BlogInfo, viewString) {
       annotations: [invite, crosspost],
       entities: { links: links }
     };
+    this.minId = null;
+    this.maxId = null;
     appnet.api.createPost(post, {}, $.proxy(this.refresh, this), null);
     appnet.api.createMessage('8093', post, {}, null, null);
   };
