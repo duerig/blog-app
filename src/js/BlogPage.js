@@ -104,8 +104,9 @@ function ($, marked, util, appnet, renderPhotos,
     result.find('#time-wrapper').html(new Date(message.created_at).toDateString());
     if (this.permalinkCallback)
     {
-      result.find('#permalink').attr('href', '#' + this.blog.id + '/' +
-                                     message.id);
+      result.find('#permalink').attr('href', 
+            window.blogapp_id ? message.id : 
+                ('#' + this.blog.id + '/' + message.id));
       var that = this;
       var id = message.id;
       result.find('#permalink').click(function (event) {

@@ -12,7 +12,16 @@ function ($, BlogView) {
   function initialize()
   {
     $('#main-content').html('');
-    var ids = parseHash(window.location.hash);
+    var ids;
+    if (window.blogapp_id) {
+        if (window.blogapp_post) {
+            ids = [window.blogapp_id,window.blogapp_post];
+        } else {
+            ids = [window.blogapp_id];
+        }
+    } else { 
+        ids = parseHash(window.location.hash);
+    }
     if (ids.length > 0)
     {
       view = new BlogView($('#main-content'), ids[0], ids[1], true);
